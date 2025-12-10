@@ -25,4 +25,4 @@ EXPOSE 8000
 
 ENV DJANGO_SETTINGS_MODULE=gestor_inventario.settings_production
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "gestor_inventario.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--timeout", "120", "gestor_inventario.wsgi:application"]
