@@ -1,4 +1,4 @@
-from .settings import *
+from .settings import *  # noqa: F403, F401
 import dj_database_url
 
 DEBUG = False
