@@ -10,6 +10,7 @@ gunicorn==21.2.0
 
 # Utilidades adicionales
 python-decouple==3.8
+launchdarkly-server-sdk==8.2.1
 
 # Pillow para manejo de imágenes (si se necesita en el futuro)
 Pillow==10.4.0

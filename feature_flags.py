@@ -10,7 +10,6 @@ client = LDClient(
     )
 )
 
-import os
 
 def is_feature_enabled(flag_key: str, user=None):
     # Crear contexto compatible con tu SDK
@@ -21,10 +20,10 @@ def is_feature_enabled(flag_key: str, user=None):
     else:
         ld_context = (
             Context.builder(str(user.id if hasattr(user, "id") else "user-1"))
-                .set("kind", "user")
-                .set("name", getattr(user, "username", "usuario"))
-                .set("email", getattr(user, "email", "no-email"))
-                .build()
+            .set("kind", "user")
+            .set("name", getattr(user, "username", "usuario"))
+            .set("email", getattr(user, "email", "no-email"))
+            .build()
         )
 
     print("👉 Enviando contexto a LaunchDarkly:", ld_context)

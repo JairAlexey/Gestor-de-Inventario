@@ -75,3 +75,20 @@ class ProductoForm(forms.ModelForm):
                 'placeholder': '0'
             }),
         }
+
+
+class CategoriaForm(forms.ModelForm):
+    class Meta:
+        model = Categoria
+        fields = ['nombre', 'descripcion']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': INPUT_CLASS,
+                'placeholder': 'Nombre de la categoría'
+            }),
+            'descripcion': forms.Textarea(attrs={
+                'class': INPUT_CLASS,
+                'placeholder': 'Descripción de la categoría',
+                'rows': '3'
+            }),
+        }

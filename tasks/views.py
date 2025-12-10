@@ -32,10 +32,6 @@ def dashboard(request):
     dark_mode = is_feature_enabled("dark_mode", request.user)
     export_csv = is_feature_enabled("export_csv", request.user)
 
-    print("🎯 FLAG new-ui:", new_ui)
-    print("🌙 FLAG dark_mode:", dark_mode)
-    print("📁 FLAG export_csv:", export_csv)
-
     total_productos = Producto.objects.count()
     total_categorias = Categoria.objects.count()
     productos_bajos = Producto.objects.filter(cantidad_stock__lte=5).count()
@@ -260,7 +256,7 @@ def crear_categoria(request):
             return redirect('lista_categorias')
     else:
         form = CategoriaForm()
-    
+
     return render(request, 'productos/crear_categoria.html', {
         'form': form
     })
@@ -281,7 +277,7 @@ def generar_reporte_pdf(request):
     except ImportError:
         messages.error(request, 'La librería reportlab no está instalada.')
         return redirect('dashboard')
-    
+
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="reporte_productos_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'
 
@@ -309,7 +305,7 @@ def generar_reporte_pdf(request):
     elements.append(info_para)
 
     data = [['Nombre', 'Categoría', 'Stock', 'Precio', 'Descripción']]
-    
+
     for p in productos:
         descripcion = p.descripcion[:50] + '...' if p.descripcion and len(p.descripcion) > 50 else (p.descripcion or 'Sin descripción')
         data.append([
