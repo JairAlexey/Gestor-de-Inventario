@@ -79,12 +79,30 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
+      - add_ssh_keys:
+          fingerprints:
+            - "+C9OSm8JLtrL5EIMu5SxED8d0EutXciepRPINtBslow"
       - run:
           name: Construir y subir imagen Docker
           command: |
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker build -t $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1} .
             docker push $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1}
+      - run:
+          name: Actualizar manifiesto Kubernetes
+          command: |
+            git config user.email "ci-bot@circleci.com"
+            git config user.name "CircleCI Bot"
+            
+            # Actualizar el tag de la imagen en el archivo deployment.yaml
+            sed -i "s|image: .*|image: $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1}|g" k8s/deployment.yaml
+            
+            # Commitear y pushear si hay cambios
+            git add k8s/deployment.yaml
+            if ! git diff-index --quiet HEAD; then
+              git commit -m "Update deployment image to ${CIRCLE_SHA1} [skip ci]"
+              git push origin master
+            fi
 
 workflows:
   ci_cd_pipeline:
