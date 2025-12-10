@@ -1,8 +1,5 @@
 version: 2.1
 
-# orbs:
-#   slack: circleci/slack@4.12.5
-
 commands:
   setup_venv_and_deps:
     description: "Crear venv, activar e instalar dependencias del proyecto"
@@ -74,15 +71,15 @@ jobs:
             sleep 5
 
             echo "Probando endpoint raíz..."
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/)
-            if [ "$STATUS" != "200" ]; then
-              echo "Smoke test fallido (HTTP $STATUS)"
-              kill $SERVER_PID
+            STATUS=000
+            if [ "" != "200" ]; then
+              echo "Smoke test fallido (HTTP )"
+              kill 
               exit 1
             fi
 
             echo "Smoke test OK (HTTP 200)"
-            kill $SERVER_PID
+            kill 
       - run:
           name: Empaquetar artefacto ZIP
           command: |
@@ -90,41 +87,6 @@ jobs:
       - store_artifacts:
           path: build.zip
           destination: build.zip
-
-  # notify_success:
-  #   docker:
-  #     - image: cimg/base:stable
-  #   steps:
-  #     - run:
-  #         name: Preparar mensaje
-  #         command: |
-  #           echo "Notificando EXITO a Slack..."
-  #     - slack/notify:
-  #         event: always
-  #         channel: "#nuevo-canal" 
-  #         template: basic_success_1
-
-  # manual_review:
-  #   docker:
-  #     - image: cimg/base:stable
-  #   steps:
-  #     - run:
-  #         name: Esperando aprobación humana
-  #         command: |
-  #           echo "Revisar resultados antes de notificar fallo en Slack."
-
-  # notify_failure:
-  #   docker:
-  #     - image: cimg/base:stable
-  #   steps:
-  #     - run:
-  #         name: Preparar mensaje de fallo
-  #         command: |
-  #           echo "Notificando FALLO a Slack..."
-  #     - slack/notify:
-  #         event: always
-  #         channel: "#nuevo-canal" 
-  #         template: basic_fail_1
 
 workflows:
   ci_pipeline:
@@ -156,30 +118,3 @@ workflows:
                 - develop
                 - master
                 - /hotfix\/.*/
-      # - notify_success:
-      #     requires:
-      #       - smoke_deploy
-      #     filters:
-      #       branches:
-      #         only:
-      #           - develop
-      #           - master
-      #           - /hotfix\/.*/
-
-  # ci_pipeline_fail:
-  #   jobs:
-  #     - manual_review:
-  #         type: approval
-  #         filters:
-  #           branches:
-  #             only:
-  #               - master
-  #               - /hotfix\/.*/
-  #     - notify_failure:
-  #         requires:
-  #           - manual_review
-  #         filters:
-  #           branches:
-  #             only:
-  #               - master
-  #               - /hotfix\/.*/
