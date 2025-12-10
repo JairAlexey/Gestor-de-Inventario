@@ -78,8 +78,7 @@ jobs:
       - image: cimg/base:stable
     steps:
       - checkout
-      - setup_remote_docker:
-          version: 20.10.14
+      - setup_remote_docker
       - run:
           name: Construir y subir imagen Docker
           command: |
