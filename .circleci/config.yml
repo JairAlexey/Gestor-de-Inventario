@@ -71,15 +71,15 @@ jobs:
             sleep 5
 
             echo "Probando endpoint raíz..."
-            STATUS=000
-            if [ "" != "200" ]; then
-              echo "Smoke test fallido (HTTP )"
-              kill 
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/)
+            if [ "$STATUS" != "200" ]; then
+              echo "Smoke test fallido (HTTP $STATUS)"
+              kill $SERVER_PID
               exit 1
             fi
 
             echo "Smoke test OK (HTTP 200)"
-            kill 
+            kill $SERVER_PID 
       - run:
           name: Empaquetar artefacto ZIP
           command: |
