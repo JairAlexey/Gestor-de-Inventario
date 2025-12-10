@@ -1,0 +1,185 @@
+version: 2.1
+
+orbs:
+  slack: circleci/slack@4.12.5
+
+commands:
+  setup_venv_and_deps:
+    description: "Crear venv, activar e instalar dependencias del proyecto"
+    steps:
+      - run:
+          name: Crear entorno virtual e instalar dependencias
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt || pip install Django pytest pytest-django pytest-cov flake8
+
+  run_migrations:
+    description: "Aplicar migraciones Django con settings_ci"
+    steps:
+      - run:
+          name: Ejecutar migrate
+          command: |
+            . venv/bin/activate
+            python manage.py migrate --noinput --settings=gestor_inventario.settings_ci
+
+  install_curl:
+    description: "Instalar curl en el container"
+    steps:
+      - run:
+          name: Instalar curl
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y curl
+
+jobs:
+  build_and_migrate:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - setup_venv_and_deps
+      - run_migrations
+
+  lint_and_test:
+    docker:
+      - image: cimg/python:3.11
+    parallelism: 2
+    steps:
+      - checkout
+      - setup_venv_and_deps
+      - run:
+          name: Linter y tests
+          command: |
+            . venv/bin/activate
+            flake8
+            pytest --maxfail=1 --disable-warnings -q
+
+  smoke_deploy:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - setup_venv_and_deps
+      - run_migrations
+      - install_curl
+      - run:
+          name: Levantar servidor y smoke test
+          command: |
+            . venv/bin/activate
+            echo "Iniciando server de prueba..."
+            python manage.py runserver 127.0.0.1:8000 --settings=gestor_inventario.settings_ci &
+            SERVER_PID=$!
+            sleep 5
+
+            echo "Probando endpoint raíz..."
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/)
+            if [ "$STATUS" != "200" ]; then
+              echo "Smoke test fallido (HTTP $STATUS)"
+              kill $SERVER_PID
+              exit 1
+            fi
+
+            echo "Smoke test OK (HTTP 200)"
+            kill $SERVER_PID
+      - run:
+          name: Empaquetar artefacto ZIP
+          command: |
+            zip -r build.zip gestor_inventario tasks manage.py || exit 1
+      - store_artifacts:
+          path: build.zip
+          destination: build.zip
+
+  notify_success:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Preparar mensaje
+          command: |
+            echo "Notificando EXITO a Slack..."
+      - slack/notify:
+          event: always
+          channel: "#nuevo-canal" 
+          template: basic_success_1
+
+  manual_review:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Esperando aprobación humana
+          command: |
+            echo "Revisar resultados antes de notificar fallo en Slack."
+
+  notify_failure:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Preparar mensaje de fallo
+          command: |
+            echo "Notificando FALLO a Slack..."
+      - slack/notify:
+          event: always
+          channel: "#nuevo-canal" 
+          template: basic_fail_1
+
+workflows:
+  ci_pipeline:
+    jobs:
+      - build_and_migrate:
+          filters:
+            branches:
+              only:
+                - develop
+                - master
+                - /feature\/.*/
+                - /hotfix\/.*/
+      - lint_and_test:
+          requires:
+            - build_and_migrate
+          filters:
+            branches:
+              only:
+                - develop
+                - master
+                - /feature\/.*/
+                - /hotfix\/.*/
+      - smoke_deploy:
+          requires:
+            - lint_and_test
+          filters:
+            branches:
+              only:
+                - develop
+                - master
+                - /hotfix\/.*/
+      - notify_success:
+          requires:
+            - smoke_deploy
+          filters:
+            branches:
+              only:
+                - develop
+                - master
+                - /hotfix\/.*/
+
+  ci_pipeline_fail:
+    jobs:
+      - manual_review:
+          type: approval
+          filters:
+            branches:
+              only:
+                - master
+                - /hotfix\/.*/
+      - notify_failure:
+          requires:
+            - manual_review
+          filters:
+            branches:
+              only:
+                - master
+                - /hotfix\/.*/

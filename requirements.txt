@@ -1,0 +1,22 @@
+# Django Framework
+Django==5.1.5
+
+# PostgreSQL adapter
+psycopg2-binary==2.9.9
+
+# ASGI server (opcional, para producción)
+daphne==4.1.2
+
+# Utilidades adicionales
+python-decouple==3.8
+
+# Pillow para manejo de imágenes (si se necesita en el futuro)
+Pillow==10.4.0
+
+# Testing
+pytest==8.3.4
+pytest-django==4.9.0
+pytest-cov==6.0.0
+
+# Linter
+flake8==7.0.0

@@ -1,0 +1,30 @@
+[flake8]
+# Longitud máxima de línea
+max-line-length = 120
+
+# Carpetas que no serán analizadas
+exclude = 
+    .venv,
+    venv,
+    __pycache__,
+    migrations,
+    build,
+    dist
+
+# Códigos que se ignoran globalmente
+extend-ignore = 
+    E203,
+    W503,
+    W391,
+    W292,
+    E402
+
+# Archivos específicos con excepciones temporales
+per-file-ignores = 
+    gestor_inventario/settings_ci.py: F403, F405
+    tasks/admin.py: E265, E302
+    tasks/forms.py: W291, E302, E501
+    tasks/models.py: F401, W293, E302
+    tasks/tests.py: F401
+    tasks/views.py: F401, E272, E303, E501
+    tests/*.py: E302, W293, E501

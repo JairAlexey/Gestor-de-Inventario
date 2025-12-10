@@ -1,0 +1,24 @@
+# Ignorar el entorno virtual
+venv/
+.venv/
+
+# Ignorar archivos de base de datos de SQLite (opcional)
+db.sqlite3
+
+# Ignorar archivos de caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Ignorar configuraciones locales y archivos de entorno
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Reports
+reports/
+*.log
