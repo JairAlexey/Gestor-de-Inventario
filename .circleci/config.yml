@@ -1,7 +1,7 @@
 version: 2.1
 
-orbs:
-  slack: circleci/slack@4.12.5
+# orbs:
+#   slack: circleci/slack@4.12.5
 
 commands:
   setup_venv_and_deps:
@@ -91,40 +91,40 @@ jobs:
           path: build.zip
           destination: build.zip
 
-  notify_success:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - run:
-          name: Preparar mensaje
-          command: |
-            echo "Notificando EXITO a Slack..."
-      - slack/notify:
-          event: always
-          channel: "#nuevo-canal" 
-          template: basic_success_1
+  # notify_success:
+  #   docker:
+  #     - image: cimg/base:stable
+  #   steps:
+  #     - run:
+  #         name: Preparar mensaje
+  #         command: |
+  #           echo "Notificando EXITO a Slack..."
+  #     - slack/notify:
+  #         event: always
+  #         channel: "#nuevo-canal" 
+  #         template: basic_success_1
 
-  manual_review:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - run:
-          name: Esperando aprobación humana
-          command: |
-            echo "Revisar resultados antes de notificar fallo en Slack."
+  # manual_review:
+  #   docker:
+  #     - image: cimg/base:stable
+  #   steps:
+  #     - run:
+  #         name: Esperando aprobación humana
+  #         command: |
+  #           echo "Revisar resultados antes de notificar fallo en Slack."
 
-  notify_failure:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - run:
-          name: Preparar mensaje de fallo
-          command: |
-            echo "Notificando FALLO a Slack..."
-      - slack/notify:
-          event: always
-          channel: "#nuevo-canal" 
-          template: basic_fail_1
+  # notify_failure:
+  #   docker:
+  #     - image: cimg/base:stable
+  #   steps:
+  #     - run:
+  #         name: Preparar mensaje de fallo
+  #         command: |
+  #           echo "Notificando FALLO a Slack..."
+  #     - slack/notify:
+  #         event: always
+  #         channel: "#nuevo-canal" 
+  #         template: basic_fail_1
 
 workflows:
   ci_pipeline:
@@ -156,30 +156,30 @@ workflows:
                 - develop
                 - master
                 - /hotfix\/.*/
-      - notify_success:
-          requires:
-            - smoke_deploy
-          filters:
-            branches:
-              only:
-                - develop
-                - master
-                - /hotfix\/.*/
+      # - notify_success:
+      #     requires:
+      #       - smoke_deploy
+      #     filters:
+      #       branches:
+      #         only:
+      #           - develop
+      #           - master
+      #           - /hotfix\/.*/
 
-  ci_pipeline_fail:
-    jobs:
-      - manual_review:
-          type: approval
-          filters:
-            branches:
-              only:
-                - master
-                - /hotfix\/.*/
-      - notify_failure:
-          requires:
-            - manual_review
-          filters:
-            branches:
-              only:
-                - master
-                - /hotfix\/.*/
+  # ci_pipeline_fail:
+  #   jobs:
+  #     - manual_review:
+  #         type: approval
+  #         filters:
+  #           branches:
+  #             only:
+  #               - master
+  #               - /hotfix\/.*/
+  #     - notify_failure:
+  #         requires:
+  #           - manual_review
+  #         filters:
+  #           branches:
+  #             only:
+  #               - master
+  #               - /hotfix\/.*/
