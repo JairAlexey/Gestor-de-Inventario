@@ -25,4 +25,6 @@ spec:
         - name: DJANGO_SETTINGS_MODULE
           value: "gestor_inventario.settings_production"
         - name: SECRET_KEY
-          value: "cambia-esto-por-una-clave-segura-en-produccion"
+          value: "production1234567890!@#$%^&*()_+"
+        - name: LD_SDK_KEY
+          value: "sdk-7f6eed98-6b82-4817-95b9-fa72610d4d54"

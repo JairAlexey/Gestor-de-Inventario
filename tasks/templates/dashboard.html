@@ -3,24 +3,30 @@
 {% block title %}Dashboard - Gestor de Inventario{% endblock %}
 
 {% block content %}
+
 <!-- Barra de navegación superior -->
-<div class="bg-black shadow-md">
+<div class="{% if dark_mode %}bg-gray-900{% else %}bg-black{% endif %} shadow-md">
     <div class="container mx-auto px-4">
         <div class="flex justify-between items-center h-16">
-            <div class="text-white text-xl font-bold">
+            <div class="{% if dark_mode %}text-gray-100{% else %}text-white{% endif %} text-xl font-bold">
                 Inventario
             </div>
+
             <div class="relative">
                 <button onclick="toggleUserMenu()" class="flex items-center space-x-2">
-                    <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white text-lg font-semibold">
+                    <div class="w-10 h-10 rounded-full {% if dark_mode %}bg-gray-700{% else %}bg-gray-600{% endif %} flex items-center justify-center text-white text-lg font-semibold">
                         {{ request.user.username|first|upper }}
                     </div>
                 </button>
+
                 <!-- Menú desplegable -->
-                <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
-                    <a href="{% url 'login' %}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 {% if dark_mode %}bg-gray-800 text-gray-100{% else %}bg-white text-gray-700{% endif %} rounded-md shadow-lg py-1">
+                    <a href="{% url 'login' %}"
+                       class="flex items-center px-4 py-2 text-sm hover:{% if dark_mode %}bg-gray-700{% else %}bg-gray-100{% endif %}">
                         <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                            </path>
                         </svg>
                         Cerrar Sesión
                     </a>
@@ -30,108 +36,156 @@
     </div>
 </div>
 
-<!-- Script para el menú desplegable -->
+<!-- Script para el menú -->
 <script>
 function toggleUserMenu() {
     const menu = document.getElementById('userMenu');
     menu.classList.toggle('hidden');
 }
 
-// Cerrar el menú cuando se hace clic fuera de él
 document.addEventListener('click', function(event) {
     const menu = document.getElementById('userMenu');
     const userButton = event.target.closest('button');
-    
     if (!userButton && !menu.classList.contains('hidden')) {
         menu.classList.add('hidden');
     }
 });
 </script>
 
+<!-- CONTENIDO PRINCIPAL -->
+<div class="{% if dark_mode %}bg-gray-900 text-gray-100{% else %}bg-gray-100 text-gray-900{% endif %} min-h-screen">
 <div class="container mx-auto px-4 py-8">
+
     <!-- Estadísticas -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <a href="{% url 'lista_productos' %}" class="bg-white rounded-lg shadow p-6 cursor-pointer hover:bg-gray-50 transition-colors">
-            <h3 class="text-gray-500 text-sm font-medium">Total Productos</h3>
-            <p class="text-3xl font-bold text-gray-900">{{ total_productos }}</p>
+
+        <!-- Productos -->
+        <a href="{% url 'lista_productos' %}"
+           class="{% if dark_mode %}bg-gray-800 text-gray-100 hover:bg-gray-700{% else %}bg-white text-gray-900 hover:bg-gray-50{% endif %} rounded-lg shadow p-6 cursor-pointer transition-colors">
+            <h3 class="{% if dark_mode %}text-gray-300{% else %}text-gray-500{% endif %} text-sm font-medium">Total Productos</h3>
+            <p class="text-3xl font-bold">{{ total_productos }}</p>
         </a>
-        <a href="{% url 'lista_categorias' %}" class="bg-white rounded-lg shadow p-6 cursor-pointer hover:bg-gray-50 transition-colors">
-            <h3 class="text-gray-500 text-sm font-medium">Total Categorías</h3>
-            <p class="text-3xl font-bold text-gray-900">{{ total_categorias }}</p>
+
+        <!-- Categorías -->
+        <a href="{% url 'lista_categorias' %}"
+           class="{% if dark_mode %}bg-gray-800 text-gray-100 hover:bg-gray-700{% else %}bg-white text-gray-900 hover:bg-gray-50{% endif %} rounded-lg shadow p-6 cursor-pointer transition-colors">
+            <h3 class="{% if dark_mode %}text-gray-300{% else %}text-gray-500{% endif %} text-sm font-medium">Total Categorías</h3>
+            <p class="text-3xl font-bold">{{ total_categorias }}</p>
         </a>
-        <a href="{% url 'productos_bajo_stock' %}" class="bg-white rounded-lg shadow p-6 cursor-pointer hover:bg-gray-50 transition-colors">
-            <h3 class="text-gray-500 text-sm font-medium">Productos Bajo Stock</h3>
-            <p class="text-3xl font-bold text-gray-900">{{ productos_bajos }}</p>
+
+        <!-- Bajo stock -->
+        <a href="{% url 'productos_bajo_stock' %}"
+           class="{% if dark_mode %}bg-gray-800 text-gray-100 hover:bg-gray-700{% else %}bg-white text-gray-900 hover:bg-gray-50{% endif %} rounded-lg shadow p-6 cursor-pointer transition-colors">
+            <h3 class="{% if dark_mode %}text-gray-300{% else %}text-gray-500{% endif %} text-sm font-medium">Productos Bajo Stock</h3>
+            <p class="text-3xl font-bold">{{ productos_bajos }}</p>
         </a>
     </div>
 
-    <!-- Botón Ingresar Producto -->
-    <div class="mb-8">
-        <button onclick="toggleModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <!-- Botones -->
+    <div class="mb-8 flex space-x-4">
+
+        <!-- Ingresar Producto -->
+        <button onclick="toggleModal()"
+                class="{% if dark_mode %}bg-indigo-500 hover:bg-indigo-600{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %} text-white px-4 py-2 rounded-md">
             Ingresar Producto
         </button>
+
+        <!-- PDF -->
+        <a href="{% url 'reporte_pdf' %}"
+           class="{% if dark_mode %}bg-green-500 hover:bg-green-600{% else %}bg-green-600 hover:bg-green-700{% endif %} text-white px-4 py-2 rounded-md inline-flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                </path>
+            </svg>
+            Generar Reporte PDF
+        </a>
+
+        <!-- EXPORTAR CSV (Sólo si el FLAG está activo) -->
+        {% if export_csv %}
+        <a href="{% url 'exportar_csv' %}"
+           class="{% if dark_mode %}bg-yellow-500 hover:bg-yellow-600{% else %}bg-yellow-600 hover:bg-yellow-700{% endif %} 
+                  text-white px-4 py-2 rounded-md inline-flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4h16v4H4zm4 6h12v10H4V10h4z" />
+            </svg>
+            Exportar Inventario a CSV
+        </a>
+        {% endif %}
     </div>
 
-    <!-- Modal para crear producto -->
-    <div id="productoModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Crear Nuevo Producto</h3>
-                <form method="POST" action="{% url 'producto_crear' %}">
-                    {% csrf_token %}
-                    
-                    <!-- Nombre -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Nombre</label>
-                        {{ form.nombre }}
-                    </div>
+    <!-- MODAL CREAR PRODUCTO -->
+    <div id="productoModal"
+         class="fixed inset-0 {% if dark_mode %}bg-gray-900 bg-opacity-70{% else %}bg-gray-600 bg-opacity-50{% endif %} hidden overflow-y-auto h-full w-full">
 
-                    <!-- Descripción -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Descripción</label>
-                        {{ form.descripcion }}
-                    </div>
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md {% if dark_mode %}bg-gray-800 text-gray-100 border-gray-700{% else %}bg-white text-gray-900{% endif %}">
 
-                    <!-- Precio -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Precio</label>
-                        {{ form.precio }}
-                    </div>
+            <h3 class="text-lg font-medium mb-4">Crear Nuevo Producto</h3>
 
-                    <!-- Stock -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Cantidad en Stock</label>
-                        {{ form.cantidad_stock }}
-                    </div>
+            <form method="POST" action="{% url 'producto_crear' %}">
+                {% csrf_token %}
 
-                    <!-- Categoría -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Categoría</label>
-                        <select name="categoria" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            {% for categoria in categorias %}
-                                <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                <!-- Nombre -->
+                <div class="mb-4">
+                    <label class="block mb-2">Nombre</label>
+                    {{ form.nombre }}
+                </div>
 
-                    <div class="flex justify-end space-x-4 mt-6">
-                        <button type="button" onclick="toggleModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-                            Cancelar
-                        </button>
-                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                            Guardar
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <!-- Descripción -->
+                <div class="mb-4">
+                    <label class="block mb-2">Descripción</label>
+                    {{ form.descripcion }}
+                </div>
+
+                <!-- Precio -->
+                <div class="mb-4">
+                    <label class="block mb-2">Precio</label>
+                    {{ form.precio }}
+                </div>
+
+                <!-- Stock -->
+                <div class="mb-4">
+                    <label class="block mb-2">Cantidad en Stock</label>
+                    {{ form.cantidad_stock }}
+                </div>
+
+                <!-- Categoría -->
+                <div class="mb-4">
+                    <label class="block mb-2">Categoría</label>
+                    <select name="categoria"
+                            class="appearance-none block w-full px-3 py-2 border {% if dark_mode %}bg-gray-700 text-gray-100 border-gray-600{% else %}bg-white border-gray-300{% endif %} rounded-md shadow-sm">
+                        {% for categoria in categorias %}
+                            <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Botones -->
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button"
+                            onclick="toggleModal()"
+                            class="{% if dark_mode %}bg-gray-700 text-gray-200 hover:bg-gray-600{% else %}bg-gray-200 text-gray-800 hover:bg-gray-300{% endif %} px-4 py-2 rounded-md">
+                        Cancelar
+                    </button>
+
+                    <button type="submit"
+                            class="{% if dark_mode %}bg-indigo-500 hover:bg-indigo-600{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %} text-white px-4 py-2 rounded-md">
+                        Guardar
+                    </button>
+                </div>
+
+            </form>
         </div>
     </div>
+
+</div>
 </div>
 
 <script>
 function toggleModal() {
-    const modal = document.getElementById('productoModal');
-    modal.classList.toggle('hidden');
+    document.getElementById('productoModal').classList.toggle('hidden');
 }
 </script>
+
 {% endblock %}

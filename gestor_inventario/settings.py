@@ -128,3 +128,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGIN_URL = 'login'
+
+# LaunchDarkly Configuration
+LD_SDK_KEY = os.environ.get('LD_SDK_KEY', '')
