@@ -19,27 +19,6 @@
 
 ---
 
-## 🏗️ Estructura del Proyecto
-
-gestor-de-inventario/
-├── gestor_inventario/ # Configuración global del proyecto Django
-│ ├── settings.py
-│ ├── urls.py
-│ └── wsgi.py
-├── tasks/ # Aplicación principal
-│ ├── models.py # Modelos de Usuario, Producto, Categoría
-│ ├── views.py # Vistas con lógica de negocio
-│ ├── forms.py # Formularios personalizados
-│ ├── admin.py # Configuración del panel de administración
-│ ├── templates/ # Plantillas HTML (Tailwind)
-│ ├── decorators.py # Decoradores personalizados
-│ └── management/commands/
-│ └── crear_categorias.py # Script para poblar la BD con categorías
-└── manage.py
-
-
----
-
 ## 🧑‍💻 Modelos
 
 ### `Categoria`
