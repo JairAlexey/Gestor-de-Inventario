@@ -26,8 +26,6 @@ def is_feature_enabled(flag_key: str, user=None):
             .build()
         )
 
-    print("👉 Enviando contexto a LaunchDarkly:", ld_context)
-
     # Evaluar flag
     value = client.variation(flag_key, ld_context, False)
     return value
