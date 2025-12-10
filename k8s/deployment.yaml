@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gestor-inventario
+  labels:
+    app: gestor-inventario
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gestor-inventario
+  template:
+    metadata:
+      labels:
+        app: gestor-inventario
+    spec:
+      containers:
+      - name: gestor-inventario
+        image: alexeyrueda823/gestor-inventario:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://postgres:wgoXCyBKImPioPBMXVTMIIpgjCcghMFn@shuttle.proxy.rlwy.net:28836/railway"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "gestor_inventario.settings_production"
+        - name: SECRET_KEY
+          value: "cambia-esto-por-una-clave-segura-en-produccion"

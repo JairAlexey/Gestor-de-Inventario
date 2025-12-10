@@ -1,120 +1,103 @@
 version: 2.1
 
-commands:
-  setup_venv_and_deps:
-    description: "Crear venv, activar e instalar dependencias del proyecto"
+jobs:
+  build:
+    docker:
+      - image: cimg/python:3.11
     steps:
+      - checkout
       - run:
-          name: Crear entorno virtual e instalar dependencias
+          name: Instalar dependencias
           command: |
             python -m venv venv
             . venv/bin/activate
             pip install --upgrade pip
-            pip install -r requirements.txt || pip install Django pytest pytest-django pytest-cov flake8
+            pip install -r requirements.txt
+      - persist_to_workspace:
+          root: .
+          paths:
+            - venv
 
-  run_migrations:
-    description: "Aplicar migraciones Django con settings_ci"
+  lint_and_test:
+    docker:
+      - image: cimg/python:3.11
     steps:
+      - checkout
+      - attach_workspace:
+          at: .
       - run:
-          name: Ejecutar migrate
+          name: Linter (flake8)
           command: |
             . venv/bin/activate
-            python manage.py migrate --noinput --settings=gestor_inventario.settings_ci
+            flake8
+      - run:
+          name: Tests (pytest)
+          command: |
+            . venv/bin/activate
+            pytest --maxfail=1 --disable-warnings -q
 
-  install_curl:
-    description: "Instalar curl en el container"
+  smoke_test:
+    docker:
+      - image: cimg/python:3.11
     steps:
+      - checkout
+      - attach_workspace:
+          at: .
       - run:
           name: Instalar curl
           command: |
             sudo apt-get update
             sudo apt-get install -y curl
-
-jobs:
-  build_and_migrate:
-    docker:
-      - image: cimg/python:3.11
-    steps:
-      - checkout
-      - setup_venv_and_deps
-      - run_migrations
-
-  lint_and_test:
-    docker:
-      - image: cimg/python:3.11
-    parallelism: 2
-    steps:
-      - checkout
-      - setup_venv_and_deps
       - run:
-          name: Linter y tests
+          name: Smoke Test (Levantar servidor y verificar)
           command: |
             . venv/bin/activate
-            flake8
-            pytest --maxfail=1 --disable-warnings -q
-
-  smoke_deploy:
-    docker:
-      - image: cimg/python:3.11
-    steps:
-      - checkout
-      - setup_venv_and_deps
-      - run_migrations
-      - install_curl
-      - run:
-          name: Levantar servidor y smoke test
-          command: |
-            . venv/bin/activate
-            echo "Iniciando server de prueba..."
-            python manage.py runserver 127.0.0.1:8000 --settings=gestor_inventario.settings_ci &
+            # Migración mínima para que la DB local (SQLite) tenga las tablas necesarias
+            python manage.py migrate
+            
+            echo "Iniciando server..."
+            python manage.py runserver 127.0.0.1:8000 &
             SERVER_PID=$!
             sleep 5
-
-            echo "Probando endpoint raíz..."
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/)
+            
+            echo "Verificando endpoint raíz..."
+            # Usamos -L para seguir redirecciones (login) y esperar un 200
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L http://127.0.0.1:8000/)
+            
             if [ "$STATUS" != "200" ]; then
-              echo "Smoke test fallido (HTTP $STATUS)"
+              echo "Fallo: HTTP $STATUS"
               kill $SERVER_PID
               exit 1
             fi
+            
+            echo "Éxito: HTTP 200"
+            kill $SERVER_PID
 
-            echo "Smoke test OK (HTTP 200)"
-            kill $SERVER_PID 
+  build_and_push_image:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.14
       - run:
-          name: Empaquetar artefacto ZIP
+          name: Construir y subir imagen Docker
           command: |
-            zip -r build.zip gestor_inventario tasks manage.py || exit 1
-      - store_artifacts:
-          path: build.zip
-          destination: build.zip
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            docker build -t $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1} .
+            docker push $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1}
 
 workflows:
-  ci_pipeline:
+  ci_cd_pipeline:
     jobs:
-      - build_and_migrate:
-          filters:
-            branches:
-              only:
-                - develop
-                - master
-                - /feature\/.*/
-                - /hotfix\/.*/
+      - build
       - lint_and_test:
           requires:
-            - build_and_migrate
-          filters:
-            branches:
-              only:
-                - develop
-                - master
-                - /feature\/.*/
-                - /hotfix\/.*/
-      - smoke_deploy:
+            - build
+      - smoke_test:
           requires:
             - lint_and_test
-          filters:
-            branches:
-              only:
-                - develop
-                - master
-                - /hotfix\/.*/
+      - build_and_push_image:
+          requires:
+            - smoke_test
+          context: docker-hub-credentials # Asegúrate de crear este contexto o usar variables de entorno de proyecto

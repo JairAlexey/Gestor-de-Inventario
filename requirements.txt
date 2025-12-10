@@ -3,9 +3,10 @@ Django==5.1.5
 
 # PostgreSQL adapter
 psycopg2-binary==2.9.9
+dj-database-url==3.0.1
 
 # ASGI server (opcional, para producción)
-daphne==4.1.2
+gunicorn==21.2.0
 
 # Utilidades adicionales
 python-decouple==3.8
