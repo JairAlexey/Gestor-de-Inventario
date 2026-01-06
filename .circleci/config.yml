@@ -96,7 +96,7 @@ jobs:
             ./venv/bin/python manage.py migrate
             ./venv/bin/python manage.py runserver 127.0.0.1:8000 &
             SERVER_PID=$!
-            sleep 6
+            sleep 8
 
             mkdir -p reports
             docker pull arachni/arachni:latest
@@ -104,16 +104,17 @@ jobs:
             docker run --rm --network host \
               -v "$PWD/reports:/reports" \
               arachni/arachni \
-              http://127.0.0.1:8000 \
+              /usr/local/bin/arachni http://127.0.0.1:8000 \
               --report-save-path=/reports/arachni.afr
 
             docker run --rm \
               -v "$PWD/reports:/reports" \
               arachni/arachni \
-              --reporter=html:outfile=/reports/arachni-report.html \
-              /reports/arachni.afr
+              /usr/local/bin/arachni_reporter /reports/arachni.afr \
+              --reporter=html:outfile=/reports/arachni-report.html
 
             kill $SERVER_PID
+
 
       - store_artifacts:
           path: reports
