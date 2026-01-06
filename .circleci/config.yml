@@ -91,7 +91,7 @@ jobs:
             ./venv/bin/python -m pip install -r requirements.txt
 
       - run:
-          name: DAST - Arachni Scan (CLI)
+          name: DAST - Arachni Scan (imagen compatible)
           command: |
             ./venv/bin/python manage.py migrate
             ./venv/bin/python manage.py runserver 127.0.0.1:8000 &
@@ -99,25 +99,29 @@ jobs:
             sleep 8
 
             mkdir -p reports
-            docker pull danmx/docker-arachni-cli:latest
 
-            docker run --rm --network host \
-              -w /reports -v "$PWD/reports:/reports" \
-              danmx/docker-arachni-cli \
-              arachni http://127.0.0.1:8000 \
-              --report-save-path /reports/arachni.afr
+            docker pull hercules9/arachni:latest
 
-            docker run --rm \
-              -w /reports -v "$PWD/reports:/reports" \
-              danmx/docker-arachni-cli \
-              arachni_reporter /reports/arachni.afr \
-              --reporter=html:outfile=/reports/arachni-report.html.zip
+            # Scan: guarda .afr en /tmp (montado a reports)
+            docker run --rm --network host --user 1000:1000 \
+              -v "$PWD/reports:/tmp" \
+              hercules9/arachni \
+              bin/arachni --output-verbose http://127.0.0.1:8000 \
+              --report-save-path=/tmp/arachni.afr
+
+            # Reporte HTML (zip)
+            docker run --rm --user 1000:1000 \
+              -v "$PWD/reports:/tmp" \
+              hercules9/arachni \
+              bin/arachni_reporter /tmp/arachni.afr \
+              --reporter=html:outfile=/tmp/arachni-report.html.zip
 
             kill $SERVER_PID
 
       - store_artifacts:
           path: reports
           destination: arachni-reports
+
 
   build_and_push_image:
     docker:
