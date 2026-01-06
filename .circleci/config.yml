@@ -76,37 +76,24 @@ jobs:
       - checkout
 
       - run:
-          name: Instalar Python 3.11
+          name: DAST - Arachni Scan (Railway)
           command: |
-            sudo apt-get update
-            sudo apt-get install -y python3.11 python3.11-venv python3.11-dev
-            python3.11 --version
+            set -e
 
-      - run:
-          name: Crear venv con Python 3.11
-          command: |
-            python3.11 -m venv venv
-            ./venv/bin/python --version
-            ./venv/bin/python -m pip install --upgrade pip
-            ./venv/bin/python -m pip install -r requirements.txt
+            TARGET_URL="https://gestor-de-inventario-production.up.railway.app"
+            echo "Target: $TARGET_URL"
 
-      - run:
-          name: DAST - Arachni Scan (imagen compatible)
-          command: |
-            ./venv/bin/python manage.py migrate
-            ./venv/bin/python manage.py runserver 127.0.0.1:8000 &
-            SERVER_PID=$!
-            sleep 8
+            # Verificación rápida de conectividad (si falla, no tiene sentido escanear)
+            curl -L -I "$TARGET_URL" | head -n 20
 
             mkdir -p reports
-
             docker pull hercules9/arachni:latest
 
-            # Scan: guarda .afr en /tmp (montado a reports)
-            docker run --rm --network host --user 1000:1000 \
+            # Scan remoto contra Railway (sin 127.0.0.1 / localhost)
+            docker run --rm --user 1000:1000 \
               -v "$PWD/reports:/tmp" \
               hercules9/arachni \
-              bin/arachni --output-verbose http://127.0.0.1:8000 \
+              bin/arachni --output-verbose "$TARGET_URL" \
               --report-save-path=/tmp/arachni.afr
 
             # Reporte HTML (zip)
@@ -116,12 +103,9 @@ jobs:
               bin/arachni_reporter /tmp/arachni.afr \
               --reporter=html:outfile=/tmp/arachni-report.html.zip
 
-            kill $SERVER_PID
-
       - store_artifacts:
           path: reports
           destination: arachni-reports
-
 
   build_and_push_image:
     docker:
@@ -138,6 +122,7 @@ jobs:
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker build -t $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1} .
             docker push $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1}
+
       - run:
           name: Update Kubernetes Manifest
           command: |
