@@ -2,7 +2,7 @@ version: 2.1
 
 commands:
   setup_python_env:
-    description: "Crear venv e instalar dependencias"
+    description: "Crear entorno virtual e instalar dependencias"
     steps:
       - run:
           name: Setup Python env
@@ -24,21 +24,20 @@ jobs:
           root: .
           paths:
             - venv
-            - .
 
   lint_test_and_coverage:
     docker:
       - image: cimg/python:3.11
     steps:
+      - checkout
       - attach_workspace:
           at: .
       - run:
-          name: Lint + Tests + Coverage
+          name: Lint + Tests + Coverage.xml
           command: |
             . venv/bin/activate
             flake8
-            pytest --maxfail=1 --disable-warnings -q \
-              --cov=. --cov-report=xml --cov-report=term
+            pytest --maxfail=1 --disable-warnings -q --cov=. --cov-report=xml:coverage.xml
       - persist_to_workspace:
           root: .
           paths:
@@ -48,20 +47,26 @@ jobs:
     docker:
       - image: sonarsource/sonar-scanner-cli:latest
     steps:
+      - checkout
       - attach_workspace:
           at: .
       - run:
-          name: SAST - SonarCloud Scan (con coverage)
+          name: SAST - SonarCloud Scan (con Coverage)
           command: |
+            test -f coverage.xml && echo "coverage.xml OK" || (echo "coverage.xml NO EXISTE" && exit 1)
+
             sonar-scanner \
               -Dsonar.host.url=$SONAR_HOST_URL \
-              -Dsonar.login=$SONAR_TOKEN \
-              -Dsonar.python.coverage.reportPaths=coverage.xml
+              -Dsonar.token=$SONAR_TOKEN \
+              -Dsonar.scm.disabled=true \
+              -Dsonar.python.coverage.reportPaths=coverage.xml \
+              -Dsonar.coverage.exclusions="**/migrations/**,**/tests/**,tests/**,**/__pycache__/**,**/venv/**"
 
   smoke_test:
     docker:
       - image: cimg/python:3.11
     steps:
+      - checkout
       - attach_workspace:
           at: .
       - run:
@@ -84,23 +89,29 @@ jobs:
           name: DAST - Arachni Scan (Railway)
           command: |
             set -e
+
             TARGET_URL="https://gestor-de-inventario-production.up.railway.app"
             echo "Target: $TARGET_URL"
 
-            curl -L -I "$TARGET_URL" | head -n 20
+            # Verificación rápida de conectividad
+            curl -L -I "$TARGET_URL" | head -n 30
 
             mkdir -p reports
+
+            # Permitir que el usuario 1000 escriba en reports (porque Arachni no corre como root)
             sudo chown -R 1000:1000 reports
             sudo chmod -R 775 reports
 
             docker pull hercules9/arachni:latest
 
+            # Scan remoto contra Railway
             docker run --rm --user 1000:1000 \
               -v "$PWD/reports:/reports" \
               hercules9/arachni \
               bin/arachni --output-verbose "$TARGET_URL" \
               --report-save-path=/reports/arachni.afr
 
+            # Reporte HTML (zip)
             docker run --rm --user 1000:1000 \
               -v "$PWD/reports:/reports" \
               hercules9/arachni \
@@ -126,6 +137,7 @@ jobs:
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker build -t $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1} .
             docker push $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1}
+
       - run:
           name: Update Kubernetes Manifest
           command: |
