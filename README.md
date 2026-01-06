@@ -23,7 +23,7 @@
 
 ### `Categoria`
 - `nombre`: CharField
-- `descripcion`: TextField
+- `descripcion`: TextField.
 
 ### `Producto`
 - `nombre`, `descripcion`, `precio`, `cantidad_stock`
