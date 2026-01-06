@@ -83,27 +83,29 @@ jobs:
             TARGET_URL="https://gestor-de-inventario-production.up.railway.app"
             echo "Target: $TARGET_URL"
 
-            # Verificación rápida de conectividad
             curl -L -I "$TARGET_URL" | head -n 20
 
             mkdir -p reports
+
+            # Permisos: permitir que el usuario 1000 escriba en reports
+            sudo chown -R 1000:1000 reports
+            sudo chmod -R 775 reports
+
             docker pull hercules9/arachni:latest
 
-            # IMPORTANTE:
-            # - NO usar --user 1000:1000 (provoca permission denied)
-            # - NO escribir en /tmp dentro del contenedor
-            # - Escribir en un path montado (/reports)
-            docker run --rm \
+            # Ejecutar como NO-root y escribir en /reports (montado)
+            docker run --rm --user 1000:1000 \
               -v "$PWD/reports:/reports" \
               hercules9/arachni \
               bin/arachni --output-verbose "$TARGET_URL" \
               --report-save-path=/reports/arachni.afr
 
-            docker run --rm \
+            docker run --rm --user 1000:1000 \
               -v "$PWD/reports:/reports" \
               hercules9/arachni \
               bin/arachni_reporter /reports/arachni.afr \
               --reporter=html:outfile=/reports/arachni-report.html.zip
+
 
       - store_artifacts:
           path: reports
