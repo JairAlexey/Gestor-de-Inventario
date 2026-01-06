@@ -80,24 +80,21 @@ jobs:
           command: |
             sudo apt-get update
             sudo apt-get install -y python3.11 python3.11-venv python3.11-dev
-            sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
-            sudo update-alternatives --set python /usr/bin/python3.11
-            python --version
+            python3.11 --version
 
       - run:
-          name: Setup Python env
+          name: Crear venv con Python 3.11
           command: |
-            python -m venv venv
-            . venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
+            python3.11 -m venv venv
+            ./venv/bin/python --version
+            ./venv/bin/python -m pip install --upgrade pip
+            ./venv/bin/python -m pip install -r requirements.txt
 
       - run:
           name: DAST - Arachni Scan
           command: |
-            . venv/bin/activate
-            python manage.py migrate
-            python manage.py runserver 127.0.0.1:8000 &
+            ./venv/bin/python manage.py migrate
+            ./venv/bin/python manage.py runserver 127.0.0.1:8000 &
             SERVER_PID=$!
             sleep 6
 
@@ -116,6 +113,7 @@ jobs:
       - store_artifacts:
           path: reports
           destination: arachni-reports
+
 
 
   build_and_push_image:
