@@ -100,15 +100,22 @@ jobs:
 
             mkdir -p reports
             docker pull arachni/arachni:latest
-            docker run --rm --network host -v "$PWD/reports:/reports" arachni/arachni \
-              arachni http://127.0.0.1:8000 \
+
+            docker run --rm --network host \
+              -v "$PWD/reports:/reports" \
+              arachni/arachni \
+              /opt/arachni/bin/arachni http://127.0.0.1:8000 \
               --report-save-path=/reports/arachni.afr
 
-            docker run --rm -v "$PWD/reports:/reports" arachni/arachni \
-              arachni_reporter /reports/arachni.afr \
+            docker run --rm \
+              -v "$PWD/reports:/reports" \
+              arachni/arachni \
+              /opt/arachni/bin/arachni_reporter \
+              /reports/arachni.afr \
               --reporter=html:outfile=/reports/arachni-report.html
 
             kill $SERVER_PID
+
 
       - store_artifacts:
           path: reports
