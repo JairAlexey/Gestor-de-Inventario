@@ -83,25 +83,27 @@ jobs:
             TARGET_URL="https://gestor-de-inventario-production.up.railway.app"
             echo "Target: $TARGET_URL"
 
-            # Verificación rápida de conectividad (si falla, no tiene sentido escanear)
+            # Verificación rápida de conectividad
             curl -L -I "$TARGET_URL" | head -n 20
 
             mkdir -p reports
             docker pull hercules9/arachni:latest
 
-            # Scan remoto contra Railway (sin 127.0.0.1 / localhost)
-            docker run --rm --user 1000:1000 \
-              -v "$PWD/reports:/tmp" \
+            # IMPORTANTE:
+            # - NO usar --user 1000:1000 (provoca permission denied)
+            # - NO escribir en /tmp dentro del contenedor
+            # - Escribir en un path montado (/reports)
+            docker run --rm \
+              -v "$PWD/reports:/reports" \
               hercules9/arachni \
               bin/arachni --output-verbose "$TARGET_URL" \
-              --report-save-path=/tmp/arachni.afr
+              --report-save-path=/reports/arachni.afr
 
-            # Reporte HTML (zip)
-            docker run --rm --user 1000:1000 \
-              -v "$PWD/reports:/tmp" \
+            docker run --rm \
+              -v "$PWD/reports:/reports" \
               hercules9/arachni \
-              bin/arachni_reporter /tmp/arachni.afr \
-              --reporter=html:outfile=/tmp/arachni-report.html.zip
+              bin/arachni_reporter /reports/arachni.afr \
+              --reporter=html:outfile=/reports/arachni-report.html.zip
 
       - store_artifacts:
           path: reports
