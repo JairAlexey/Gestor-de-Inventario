@@ -5,8 +5,9 @@ commands:
     description: "Crear entorno virtual e instalar dependencias"
     steps:
       - run:
-          name: Setup Python environment
+          name: Setup Python env
           command: |
+            python --version
             python -m venv venv
             . venv/bin/activate
             pip install --upgrade pip
@@ -73,7 +74,24 @@ jobs:
       image: ubuntu-2204:current
     steps:
       - checkout
-      - setup_python_env
+
+      - run:
+          name: Instalar Python 3.11
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y python3.11 python3.11-venv python3.11-dev
+            sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
+            sudo update-alternatives --set python /usr/bin/python3.11
+            python --version
+
+      - run:
+          name: Setup Python env
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+
       - run:
           name: DAST - Arachni Scan
           command: |
@@ -90,12 +108,15 @@ jobs:
               --report-save-path=/reports/arachni.afr
 
             docker run --rm -v "$PWD/reports:/reports" arachni/arachni \
-              arachni_reporter /reports/arachni.afr --reporter=html:outfile=/reports/arachni-report.html
+              arachni_reporter /reports/arachni.afr \
+              --reporter=html:outfile=/reports/arachni-report.html
 
             kill $SERVER_PID
+
       - store_artifacts:
           path: reports
           destination: arachni-reports
+
 
   build_and_push_image:
     docker:
