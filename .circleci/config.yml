@@ -1,18 +1,24 @@
 version: 2.1
 
+commands:
+  setup_python_env:
+    description: "Crear entorno virtual e instalar dependencias"
+    steps:
+      - run:
+          name: Setup Python environment
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+
 jobs:
   build:
     docker:
       - image: cimg/python:3.11
     steps:
       - checkout
-      - run:
-          name: Instalar dependencias
-          command: |
-            python -m venv venv
-            . venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
+      - setup_python_env
       - persist_to_workspace:
           root: .
           paths:
@@ -26,83 +32,11 @@ jobs:
       - attach_workspace:
           at: .
       - run:
-          name: Linter (flake8)
+          name: Lint and Tests
           command: |
             . venv/bin/activate
             flake8
-      - run:
-          name: Tests (pytest)
-          command: |
-            . venv/bin/activate
             pytest --maxfail=1 --disable-warnings -q
-
-  smoke_test:
-    docker:
-      - image: cimg/python:3.11
-    steps:
-      - checkout
-      - attach_workspace:
-          at: .
-      - run:
-          name: Instalar curl
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y curl
-      - run:
-          name: Smoke Test (Levantar servidor y verificar)
-          command: |
-            . venv/bin/activate
-            # Migración mínima para que la DB local (SQLite) tenga las tablas necesarias
-            python manage.py migrate
-            
-            echo "Iniciando server..."
-            python manage.py runserver 127.0.0.1:8000 &
-            SERVER_PID=$!
-            sleep 5
-            
-            echo "Verificando endpoint raíz..."
-            # Usamos -L para seguir redirecciones (login) y esperar un 200
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L http://127.0.0.1:8000/)
-            
-            if [ "$STATUS" != "200" ]; then
-              echo "Fallo: HTTP $STATUS"
-              kill $SERVER_PID
-              exit 1
-            fi
-            
-            echo "Éxito: HTTP 200"
-            kill $SERVER_PID
-
-  build_and_push_image:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - checkout
-      - setup_remote_docker
-      - add_ssh_keys:
-          fingerprints:
-            - "+C9OSm8JLtrL5EIMu5SxED8d0EutXciepRPINtBslow"
-      - run:
-          name: Construir y subir imagen Docker
-          command: |
-            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-            docker build -t $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1} .
-            docker push $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1}
-      - run:
-          name: Actualizar manifiesto Kubernetes
-          command: |
-            git config user.email "ci-bot@circleci.com"
-            git config user.name "CircleCI Bot"
-            
-            # Actualizar el tag de la imagen en el archivo deployment.yaml
-            sed -i "s|image: .*|image: $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1}|g" k8s/deployment.yaml
-            
-            # Commitear y pushear si hay cambios
-            git add k8s/deployment.yaml
-            if ! git diff-index --quiet HEAD; then
-              git commit -m "Update deployment image to ${CIRCLE_SHA1} [skip ci]"
-              git push origin master
-            fi
 
   sast_sonarqube:
     docker:
@@ -116,55 +50,79 @@ jobs:
               -Dsonar.host.url=$SONAR_HOST_URL \
               -Dsonar.login=$SONAR_TOKEN
 
+  smoke_test:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: Smoke Test
+          command: |
+            . venv/bin/activate
+            python manage.py migrate
+            python manage.py runserver 127.0.0.1:8000 &
+            SERVER_PID=$!
+            sleep 5
+            curl -L -f http://127.0.0.1:8000/
+            kill $SERVER_PID
+
   dast_arachni:
     machine:
       image: ubuntu-2204:current
     steps:
       - checkout
-
+      - setup_python_env
       - run:
-          name: Instalar dependencias Python
-          command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-
-      - run:
-          name: Levantar app (staging temporal)
+          name: DAST - Arachni Scan
           command: |
             . venv/bin/activate
             python manage.py migrate
             python manage.py runserver 127.0.0.1:8000 &
-            echo $! > server.pid
+            SERVER_PID=$!
             sleep 6
-            curl -I http://127.0.0.1:8000/ || (kill $(cat server.pid) && exit 1)
 
-      - run:
-          name: DAST - Arachni scan
-          command: |
             mkdir -p reports
             docker pull arachni/arachni:latest
             docker run --rm --network host -v "$PWD/reports:/reports" arachni/arachni \
               arachni http://127.0.0.1:8000 \
               --report-save-path=/reports/arachni.afr
 
-      - run:
-          name: Generar reporte HTML
-          command: |
             docker run --rm -v "$PWD/reports:/reports" arachni/arachni \
               arachni_reporter /reports/arachni.afr --reporter=html:outfile=/reports/arachni-report.html
 
+            kill $SERVER_PID
       - store_artifacts:
           path: reports
           destination: arachni-reports
 
+  build_and_push_image:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker
+      - add_ssh_keys:
+          fingerprints:
+            - "+C9OSm8JLtrL5EIMu5SxED8d0EutXciepRPINtBslow"
       - run:
-          name: Apagar server
-          when: always
+          name: Build and Push Docker Image
           command: |
-            if [ -f server.pid ]; then kill $(cat server.pid) || true; fi
-
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            docker build -t $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1} .
+            docker push $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1}
+      - run:
+          name: Update Kubernetes Manifest
+          command: |
+            git config user.email "ci-bot@circleci.com"
+            git config user.name "CircleCI Bot"
+            sed -i "s|image: .*|image: $DOCKER_USER/gestor-inventario:${CIRCLE_SHA1}|g" k8s/deployment.yaml
+            git add k8s/deployment.yaml
+            if ! git diff-index --quiet HEAD; then
+              git commit -m "Update deployment image to ${CIRCLE_SHA1} [skip ci]"
+              git push origin master
+            fi
 
 workflows:
   ci_cd_pipeline:
