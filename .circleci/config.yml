@@ -104,19 +104,16 @@ jobs:
             docker run --rm --network host \
               -v "$PWD/reports:/reports" \
               arachni/arachni \
-              /usr/bin/arachni http://127.0.0.1:8000 \
+              http://127.0.0.1:8000 \
               --report-save-path=/reports/arachni.afr
 
             docker run --rm \
               -v "$PWD/reports:/reports" \
               arachni/arachni \
-              /usr/bin/arachni_reporter \
-              /reports/arachni.afr \
-              --reporter=html:outfile=/reports/arachni-report.html
+              --reporter=html:outfile=/reports/arachni-report.html \
+              /reports/arachni.afr
 
             kill $SERVER_PID
-
-
 
       - store_artifacts:
           path: reports
