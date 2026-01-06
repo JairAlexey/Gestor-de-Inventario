@@ -104,6 +104,68 @@ jobs:
               git push origin master
             fi
 
+  sast_sonarqube:
+    docker:
+      - image: sonarsource/sonar-scanner-cli:latest
+    steps:
+      - checkout
+      - run:
+          name: SAST - SonarQube Scan
+          command: |
+            sonar-scanner \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN
+
+  dast_arachni:
+    machine:
+      image: ubuntu-2204:current
+    steps:
+      - checkout
+
+      - run:
+          name: Instalar dependencias Python
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+
+      - run:
+          name: Levantar app (staging temporal)
+          command: |
+            . venv/bin/activate
+            python manage.py migrate
+            python manage.py runserver 127.0.0.1:8000 &
+            echo $! > server.pid
+            sleep 6
+            curl -I http://127.0.0.1:8000/ || (kill $(cat server.pid) && exit 1)
+
+      - run:
+          name: DAST - Arachni scan
+          command: |
+            mkdir -p reports
+            docker pull arachni/arachni:latest
+            docker run --rm --network host -v "$PWD/reports:/reports" arachni/arachni \
+              arachni http://127.0.0.1:8000 \
+              --report-save-path=/reports/arachni.afr
+
+      - run:
+          name: Generar reporte HTML
+          command: |
+            docker run --rm -v "$PWD/reports:/reports" arachni/arachni \
+              arachni_reporter /reports/arachni.afr --reporter=html:outfile=/reports/arachni-report.html
+
+      - store_artifacts:
+          path: reports
+          destination: arachni-reports
+
+      - run:
+          name: Apagar server
+          when: always
+          command: |
+            if [ -f server.pid ]; then kill $(cat server.pid) || true; fi
+
+
 workflows:
   ci_cd_pipeline:
     jobs:
@@ -111,10 +173,16 @@ workflows:
       - lint_and_test:
           requires:
             - build
-      - smoke_test:
+      - sast_sonarqube:
           requires:
             - lint_and_test
-      - build_and_push_image:
+      - smoke_test:
+          requires:
+            - sast_sonarqube
+      - dast_arachni:
           requires:
             - smoke_test
-          context: docker-hub-credentials # Asegúrate de crear este contexto o usar variables de entorno de proyecto
+      - build_and_push_image:
+          requires:
+            - dast_arachni
+          context: docker-hub-credentials
