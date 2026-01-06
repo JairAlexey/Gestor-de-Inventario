@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: gestor-inventario
-        image: alexeyrueda823/gestor-inventario:aafbb2bbec55988b1b2a700a9fc555ec9e7c768c
+        image: alexeyrueda823/gestor-inventario:f569e82cebe7065457508053ad38e0e678c47a14
         ports:
         - containerPort: 8000
         env:
