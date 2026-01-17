@@ -114,18 +114,17 @@ jobs:
             echo "2️⃣ Ejecutando ZAP Baseline Scan (modo standalone)..."
 
             # Ejecutar ZAP baseline directamente (sin daemon previo)
-            # Esto es más confiable y genera los reportes correctamente
+            # Los nombres de archivo deben ser relativos, no rutas absolutas
             docker run --rm \
               -v "$PWD/reports:/zap/wrk:rw" \
               -t ghcr.io/zaproxy/zaproxy:stable \
               zap-baseline.py \
               -t "$DAST_TARGET_URL" \
-              -J /zap/wrk/zap-report.json \
-              -r /zap/wrk/zap-report.html \
-              -w /zap/wrk/zap-report.md \
+              -J zap-report.json \
+              -r zap-report.html \
+              -w zap-report.md \
               -d \
               -T 15 \
-              -I \
               || echo "⚠️  ZAP scan completado con warnings (esperado)"
 
             echo ""

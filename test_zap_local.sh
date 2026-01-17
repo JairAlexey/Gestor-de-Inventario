@@ -24,12 +24,11 @@ docker run --rm \
   -t ghcr.io/zaproxy/zaproxy:stable \
   zap-baseline.py \
   -t "$TARGET_URL" \
-  -J /zap/wrk/zap-report.json \
-  -r /zap/wrk/zap-report.html \
-  -w /zap/wrk/zap-report.md \
+  -J zap-report.json \
+  -r zap-report.html \
+  -w zap-report.md \
   -d \
   -T 5 \
-  -I \
   || echo "⚠️  Scan completado con warnings"
 
 echo ""
