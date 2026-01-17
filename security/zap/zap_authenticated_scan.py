@@ -7,7 +7,6 @@ import os
 import sys
 import json
 import time
-import requests
 from zapv2 import ZAPv2
 
 # Configuración desde variables de entorno
@@ -22,8 +21,9 @@ ZAP_PORT = int(os.getenv('ZAP_PORT', '8080'))
 
 class ZAPScanner:
     def __init__(self):
-        self.zap = ZAPv2(apikey=ZAP_API_KEY, proxies={'http': f'http://localhost:{ZAP_PORT}',
-                                                       'https': f'http://localhost:{ZAP_PORT}'})
+        self.zap = ZAPv2(apikey=ZAP_API_KEY,
+                         proxies={'http': f'http://localhost:{ZAP_PORT}',
+                                  'https': f'http://localhost:{ZAP_PORT}'})
         self.context_name = 'GestorInventario'
         self.user_name = 'admin_user'
 
@@ -36,7 +36,7 @@ class ZAPScanner:
                 self.zap.core.version
                 print("✅ ZAP está listo")
                 return True
-            except:
+            except Exception:
                 time.sleep(2)
         print("❌ Timeout esperando a ZAP")
         return False
@@ -66,7 +66,7 @@ class ZAPScanner:
 
         # Configurar autenticación
         login_url = LOGIN_URL
-        login_request_data = f'username={{%username%}}&password={{%password%}}&csrfmiddlewaretoken=ZAP'
+        login_request_data = 'username={%username%}&password={%password%}&csrfmiddlewaretoken=ZAP'
 
         # Establecer método de autenticación
         self.zap.authentication.set_authentication_method(
@@ -74,7 +74,7 @@ class ZAPScanner:
             authmethodname='formBasedAuthentication',
             authmethodconfigparams=f'loginUrl={login_url}&loginRequestData={login_request_data}'
         )
-        print(f"   ✅ Método configurado: Form-based")
+        print("   ✅ Método configurado: Form-based")
         print(f"   Login URL: {login_url}")
 
         # Indicadores de sesión
@@ -96,11 +96,11 @@ class ZAPScanner:
         # Configurar credenciales
         auth_config = f'username={USERNAME}&password={PASSWORD}'
         self.zap.users.set_authentication_credentials(context_id, user_id, auth_config)
-        print(f"   ✅ Credenciales configuradas")
+        print("   ✅ Credenciales configuradas")
 
         # Habilitar usuario
         self.zap.users.set_user_enabled(context_id, user_id, True)
-        print(f"   ✅ Usuario habilitado")
+        print("   ✅ Usuario habilitado")
 
         return user_id
 
@@ -122,7 +122,7 @@ class ZAPScanner:
             print(f"   Progress: {progress}%", end='\r')
             time.sleep(2)
 
-        print(f"\n   ✅ Spider completado")
+        print("\n   ✅ Spider completado")
 
         # Mostrar URLs encontradas
         urls = self.zap.spider.results(scan_id)
@@ -147,7 +147,7 @@ class ZAPScanner:
             print(f"   Progress: {progress}%", end='\r')
             time.sleep(5)
 
-        print(f"\n   ✅ Active scan completado")
+        print("\n   ✅ Active scan completado")
 
     def generate_reports(self):
         """Genera reportes en múltiples formatos."""

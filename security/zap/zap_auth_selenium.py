@@ -111,7 +111,7 @@ def export_cookies(driver, output_file):
         with open(output_file, 'w') as f:
             json.dump(cookies, f, indent=2)
 
-        print(f"✅ Cookies exportadas exitosamente")
+        print("✅ Cookies exportadas exitosamente")
 
         # Mostrar cookies importantes
         for cookie in cookies:
