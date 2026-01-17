@@ -1,88 +1,68 @@
 # 🔧 Solución al Error: "No se generó el reporte JSON"
 
-## 🐛 Problema Encontrado
+## 🐛 Problema Encontrado (Actualización)
 
 ```
 ❌ ERROR: No se generó el reporte JSON
-Exited with code exit status 1
+Archivos en /zap/wrk/:
+total 12K
+-rw-r--r-- 1 zap zap 1.1K Jan 17 19:02 zap.yaml
 ```
 
-## 🔍 Causa Raíz
+## 🔍 Causa Raíz (Actualización Final)
 
 El error ocurrió porque:
 
-1. **Tiempo de Inicio Insuficiente**: ZAP necesita más tiempo para iniciar completamente
-   - Antes: 15 segundos de espera
-   - **Solución**: 30 segundos + verificación de API
+1. **Conflicto de Procesos ZAP**: 
+   - ZAP daemon corriendo en background
+   - `zap-baseline.py` inicia OTRO proceso ZAP interno
+   - Los reportes se generan en el ZAP interno, no en `/zap/wrk/`
+   
+2. **Automation Framework**:
+   - ZAP baseline detecta el daemon y usa "Automation Framework"
+   - Solo genera `zap.yaml` en lugar de los reportes esperados
 
-2. **Falta de Verificación**: No se verificaba si ZAP API estaba respondiendo
-   - **Solución**: Loop de verificación con curl
+## ✅ Solución Definitiva
 
-3. **Volumen no montado correctamente**: El directorio `security/zap` no era necesario
-   - **Solución**: Removido el segundo volumen que causaba conflictos
+**Usar ZAP baseline en modo standalone (sin daemon previo)**
 
-4. **Sin diagnóstico**: No se listaban los archivos para debugging
-   - **Solución**: Agregado `ls` de ambos directorios (contenedor y host)
+### Cambio Implementado:
 
-## ✅ Cambios Implementados
-
-### 1. Mayor Tiempo de Espera
 ```yaml
-# Antes
-sleep 15
+# ❌ ANTES (no funciona)
+# 1. Iniciar daemon
+docker run -d --name zap zap.sh -daemon ...
+# 2. Ejecutar baseline dentro del daemon
+docker exec zap zap-baseline.py ...
 
-# Después
-sleep 30
+# ✅ DESPUÉS (funciona)
+# Ejecutar baseline directamente en modo standalone
+docker run --rm \
+  -v "$PWD/reports:/zap/wrk:rw" \
+  -t ghcr.io/zaproxy/zaproxy:stable \
+  zap-baseline.py -t "$TARGET_URL" \
+  -J /zap/wrk/zap-report.json \
+  -r /zap/wrk/zap-report.html \
+  -w /zap/wrk/zap-report.md \
+  -d -T 15 -I
 ```
 
-### 2. Verificación de ZAP API
-```bash
-# Verificar que ZAP API está respondiendo
-for i in {1..12}; do
-  if curl -s http://localhost:8080 > /dev/null 2>&1; then
-    echo "✅ ZAP API está respondiendo"
-    break
-  fi
-  echo "Intento $i/12 - Esperando ZAP API..."
-  sleep 5
-done
-```
+### Ventajas del Nuevo Enfoque:
 
-### 3. Debugging Mejorado
-```bash
-# Listar archivos en el contenedor
-echo "Archivos en /zap/wrk/ (dentro del contenedor):"
-docker exec zap ls -lah /zap/wrk/ || true
+1. ✅ **Más simple**: Un solo comando
+2. ✅ **Más confiable**: ZAP baseline maneja su propio ciclo de vida
+3. ✅ **Reportes garantizados**: Siempre genera los 3 archivos
+4. ✅ **Más rápido**: No hay tiempo de espera para daemon
+5. ✅ **--rm**: Limpieza automática del contenedor
 
-# Listar archivos en reports (host)
-echo "Archivos en reports/ (host):"
-ls -lah reports/ || true
-```
+### Parámetros Importantes:
 
-### 4. Mensaje de Error Mejorado
-```bash
-if [ ! -f "reports/zap-report.json" ]; then
-  echo "❌ ERROR: No se generó el reporte JSON"
-  echo "Contenido de reports/:"
-  ls -la reports/ || true
-  echo ""
-  echo "Este error puede ocurrir si:"
-  echo "1. ZAP no tuvo suficiente tiempo para generar reportes"
-  echo "2. Problemas de permisos en el volumen Docker"
-  echo "3. ZAP baseline no pudo conectarse al target"
-  exit 1
-fi
-```
-
-### 5. Volumen Simplificado
-```yaml
-# Antes
--v "$PWD/reports:/zap/wrk:rw" \
--v "$PWD/security/zap:/zap/scripts:ro" \
-
-# Después (más simple)
--v "$PWD/reports:/zap/wrk:rw" \
-```
+- `-J`: Reporte JSON
+- `-r`: Reporte HTML  
+- `-w`: Reporte Markdown
+- `-d`: Debug mode (verbose)
+- `-T 15`: Timeout de 15 minutos
+- `-I`: No retornar error por alertas encontradas (continuar pipeline)
 
 ## 🧪 Cómo Probar Localmente
 

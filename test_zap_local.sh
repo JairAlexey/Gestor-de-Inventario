@@ -18,34 +18,10 @@ docker rm -f zap 2>/dev/null || true
 mkdir -p reports
 chmod 777 reports
 
-echo "1️⃣ Iniciando ZAP..."
-docker run -d --name zap \
-  -u zap \
-  -p 8080:8080 \
+echo "1️⃣ Ejecutando ZAP Baseline (modo standalone)..."
+docker run --rm \
   -v "$PWD/reports:/zap/wrk:rw" \
-  ghcr.io/zaproxy/zaproxy:stable \
-  zap.sh -daemon -host 0.0.0.0 -port 8080 \
-  -config api.addrs.addr.name=.* \
-  -config api.addrs.addr.regex=true \
-  -config api.disablekey=true
-
-echo "⏳ Esperando 30s..."
-sleep 30
-
-echo ""
-echo "2️⃣ Verificando ZAP API..."
-for i in {1..5}; do
-  if curl -s http://localhost:8080 > /dev/null 2>&1; then
-    echo "✅ ZAP API respondiendo"
-    break
-  fi
-  echo "Intento $i/5..."
-  sleep 5
-done
-
-echo ""
-echo "3️⃣ Ejecutando baseline scan..."
-docker exec zap \
+  -t ghcr.io/zaproxy/zaproxy:stable \
   zap-baseline.py \
   -t "$TARGET_URL" \
   -J /zap/wrk/zap-report.json \
@@ -53,21 +29,12 @@ docker exec zap \
   -w /zap/wrk/zap-report.md \
   -d \
   -T 5 \
+  -I \
   || echo "⚠️  Scan completado con warnings"
 
 echo ""
-echo "4️⃣ Verificando archivos..."
-echo "En contenedor:"
-docker exec zap ls -lah /zap/wrk/
-
-echo ""
-echo "En host:"
+echo "2️⃣ Verificando archivos..."
 ls -lah reports/
-
-echo ""
-echo "5️⃣ Limpiando..."
-docker stop zap
-docker rm zap
 
 if [ -f "reports/zap-report.json" ]; then
   echo ""

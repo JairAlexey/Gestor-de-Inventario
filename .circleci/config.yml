@@ -110,45 +110,14 @@ jobs:
             mkdir -p reports
             sudo chmod 777 reports
 
-            # Ejecutar ZAP con autenticación usando API de Python
             echo ""
-            echo "2️⃣ Iniciando ZAP daemon en background..."
+            echo "2️⃣ Ejecutando ZAP Baseline Scan (modo standalone)..."
 
-            # Iniciar ZAP daemon
-            docker run -d --name zap \
-              -u zap \
-              -p 8080:8080 \
+            # Ejecutar ZAP baseline directamente (sin daemon previo)
+            # Esto es más confiable y genera los reportes correctamente
+            docker run --rm \
               -v "$PWD/reports:/zap/wrk:rw" \
-              ghcr.io/zaproxy/zaproxy:stable \
-              zap.sh -daemon -host 0.0.0.0 -port 8080 \
-              -config api.addrs.addr.name=.* \
-              -config api.addrs.addr.regex=true \
-              -config api.disablekey=true
-
-            # Esperar a que ZAP inicie completamente
-            echo "⏳ Esperando a que ZAP inicie..."
-            sleep 30
-            
-            # Verificar que ZAP está corriendo
-            echo "Verificando estado de ZAP..."
-            docker ps | grep zap
-            
-            # Verificar que ZAP API está respondiendo
-            echo "Verificando ZAP API..."
-            for i in {1..12}; do
-              if curl -s http://localhost:8080 > /dev/null 2>&1; then
-                echo "✅ ZAP API está respondiendo"
-                break
-              fi
-              echo "Intento $i/12 - Esperando ZAP API..."
-              sleep 5
-            done
-
-            echo ""
-            echo "3️⃣ Ejecutando scan con autenticación..."
-
-            # Ejecutar ZAP baseline dentro del contenedor
-            docker exec zap \
+              -t ghcr.io/zaproxy/zaproxy:stable \
               zap-baseline.py \
               -t "$DAST_TARGET_URL" \
               -J /zap/wrk/zap-report.json \
@@ -156,28 +125,16 @@ jobs:
               -w /zap/wrk/zap-report.md \
               -d \
               -T 15 \
+              -I \
               || echo "⚠️  ZAP scan completado con warnings (esperado)"
 
             echo ""
-            echo "4️⃣ Verificando archivos generados..."
-            
-            # Listar archivos en el contenedor
-            echo "Archivos en /zap/wrk/ (dentro del contenedor):"
-            docker exec zap ls -lah /zap/wrk/ || true
-            
-            # Listar archivos en reports (host)
-            echo ""
-            echo "Archivos en reports/ (host):"
-            ls -lah reports/ || true
-
-            # Detener ZAP
-            echo ""
-            echo "Deteniendo ZAP..."
-            docker stop zap
-            docker rm zap
+            echo "3️⃣ Verificando archivos generados..."
+            echo "Archivos en reports/:"
+            ls -lah reports/
 
             echo ""
-            echo "5️⃣ Analizando resultados..."
+            echo "4️⃣ Analizando resultados..."
 
             # Verificar que los reportes existen
             if [ ! -f "reports/zap-report.json" ]; then
