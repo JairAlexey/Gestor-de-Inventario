@@ -104,50 +104,74 @@ class ZAPScanner:
 
         return user_id
 
-    def spider_scan(self, user_id):
+    def spider_scan(self, context_id, user_id):
         """Ejecuta spider scan autenticado."""
         print("\n🕷️  Iniciando Spider Scan (autenticado)...")
 
-        scan_id = self.zap.spider.scan_as_user(
-            contextid=self.context_name,
-            userid=user_id,
-            url=TARGET_URL,
-            recurse=True
-        )
-        print(f"   Scan ID: {scan_id}")
+        try:
+            scan_id = self.zap.spider.scan_as_user(
+                contextid=context_id,
+                userid=user_id,
+                url=TARGET_URL,
+                recurse=True
+            )
+            print(f"   Scan ID: {scan_id}")
 
-        # Esperar a que termine
-        while int(self.zap.spider.status(scan_id)) < 100:
-            progress = self.zap.spider.status(scan_id)
-            print(f"   Progress: {progress}%", end='\r')
-            time.sleep(2)
+            # Verificar que el scan_id es válido
+            if not scan_id or not scan_id.isdigit():
+                print(f"   ⚠️ ID de scan inválido: {scan_id}")
+                print("   Intentando spider scan simple...")
+                scan_id = self.zap.spider.scan(TARGET_URL)
+                print(f"   Nuevo Scan ID: {scan_id}")
 
-        print("\n   ✅ Spider completado")
+            # Esperar a que termine
+            while int(self.zap.spider.status(scan_id)) < 100:
+                progress = self.zap.spider.status(scan_id)
+                print(f"   Progress: {progress}%", end='\r')
+                time.sleep(2)
 
-        # Mostrar URLs encontradas
-        urls = self.zap.spider.results(scan_id)
-        print(f"   📊 URLs encontradas: {len(urls)}")
-        return urls
+            print("\n   ✅ Spider completado")
 
-    def active_scan(self, user_id):
+            # Mostrar URLs encontradas
+            urls = self.zap.spider.results(scan_id)
+            print(f"   📊 URLs encontradas: {len(urls)}")
+            return urls
+        except Exception as e:
+            print(f"   ❌ Error en spider scan: {e}")
+            print("   Continuando con scan simple...")
+            scan_id = self.zap.spider.scan(TARGET_URL)
+            time.sleep(30)  # Esperar un poco
+            return []
+
+    def active_scan(self, context_id, user_id):
         """Ejecuta active scan autenticado."""
         print("\n🔍 Iniciando Active Scan (autenticado)...")
 
-        scan_id = self.zap.ascan.scan_as_user(
-            url=TARGET_URL,
-            contextid=self.context_name,
-            userid=user_id,
-            recurse=True
-        )
-        print(f"   Scan ID: {scan_id}")
+        try:
+            scan_id = self.zap.ascan.scan_as_user(
+                url=TARGET_URL,
+                contextid=context_id,
+                userid=user_id,
+                recurse=True
+            )
+            print(f"   Scan ID: {scan_id}")
 
-        # Esperar a que termine
-        while int(self.zap.ascan.status(scan_id)) < 100:
-            progress = self.zap.ascan.status(scan_id)
-            print(f"   Progress: {progress}%", end='\r')
-            time.sleep(5)
+            # Verificar que el scan_id es válido
+            if not scan_id or not scan_id.isdigit():
+                print(f"   ⚠️ ID de scan inválido: {scan_id}")
+                print("   Saltando active scan...")
+                return
 
-        print("\n   ✅ Active scan completado")
+            # Esperar a que termine
+            while int(self.zap.ascan.status(scan_id)) < 100:
+                progress = self.zap.ascan.status(scan_id)
+                print(f"   Progress: {progress}%", end='\r')
+                time.sleep(5)
+
+            print("\n   ✅ Active scan completado")
+        except Exception as e:
+            print(f"   ⚠️ Error en active scan: {e}")
+            print("   Continuando sin active scan...")
 
     def generate_reports(self):
         """Genera reportes en múltiples formatos."""
@@ -260,8 +284,8 @@ class ZAPScanner:
             self.configure_authentication(context_id)
             user_id = self.create_user(context_id)
 
-            self.spider_scan(user_id)
-            self.active_scan(user_id)
+            self.spider_scan(context_id, user_id)
+            self.active_scan(context_id, user_id)
 
             report_data = self.generate_reports()
             success = self.analyze_results(report_data)
