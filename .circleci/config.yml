@@ -86,7 +86,7 @@ jobs:
     environment:
       DAST_TARGET_URL: https://gestor-de-inventario-production.up.railway.app
       DAST_LOGIN_USER: admin
-      DAST_LOGIN_PASS: admin
+      DAST_LOGIN_PASS: admin123
       DAST_LOGIN_PATH: /login/
     steps:
       - checkout
@@ -111,20 +111,49 @@ jobs:
             sudo chmod 777 reports
 
             echo ""
-            echo "2️⃣ Ejecutando ZAP Baseline Scan (modo standalone)..."
+            echo "2️⃣ Ejecutando ZAP Full Scan con Autenticación..."
 
-            # Ejecutar ZAP baseline directamente (sin daemon previo)
-            # Los nombres de archivo deben ser relativos, no rutas absolutas
+            # Crear archivo de configuración de contexto para autenticación
+            cat > reports/zap-context.yaml <<EOF
+env:
+  contexts:
+    - name: "GestorInventario"
+      urls:
+        - "$DAST_TARGET_URL.*"
+      includePaths:
+        - "$DAST_TARGET_URL.*"
+      excludePaths:
+        - "$DAST_TARGET_URL/logout.*"
+      authentication:
+        method: "form"
+        parameters:
+          loginUrl: "$DAST_TARGET_URL/login/"
+          loginRequestData: "username={%username%}&password={%password%}&csrfmiddlewaretoken={%csrftoken%}"
+        verification:
+          method: "response"
+          loggedInRegex: "\\QCerrar Sesión\\E"
+          loggedOutRegex: "\\QIniciar Sesión\\E"
+      sessionManagement:
+        method: "cookie"
+      users:
+        - name: "$DAST_LOGIN_USER"
+          credentials:
+            username: "$DAST_LOGIN_USER"
+            password: "$DAST_LOGIN_PASS"
+EOF
+
+            # Ejecutar ZAP con autenticación
             docker run --rm \
               -v "$PWD/reports:/zap/wrk:rw" \
               -t ghcr.io/zaproxy/zaproxy:stable \
-              zap-baseline.py \
+              zap-full-scan.py \
               -t "$DAST_TARGET_URL" \
               -J zap-report.json \
               -r zap-report.html \
               -w zap-report.md \
               -d \
-              -T 15 \
+              -T 20 \
+              -m 10 \
               || echo "⚠️  ZAP scan completado con warnings (esperado)"
 
             echo ""
