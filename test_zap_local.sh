@@ -4,14 +4,11 @@
 set -e
 
 TARGET_URL="https://gestor-de-inventario-production.up.railway.app"
-LOGIN_USER="admin"
-LOGIN_PASS="admin123"
 
 echo "=========================================="
-echo "🧪 Prueba Local de ZAP con Autenticación"
+echo "🧪 Prueba Local de ZAP Full Scan"
 echo "=========================================="
 echo "Target: $TARGET_URL"
-echo "User: $LOGIN_USER"
 echo ""
 
 # Limpiar contenedor anterior si existe
@@ -21,36 +18,7 @@ docker rm -f zap 2>/dev/null || true
 mkdir -p reports
 chmod 777 reports
 
-echo "1️⃣ Creando configuración de autenticación..."
-cat > reports/zap-context.yaml <<EOF
-env:
-  contexts:
-    - name: "GestorInventario"
-      urls:
-        - "$TARGET_URL.*"
-      includePaths:
-        - "$TARGET_URL.*"
-      excludePaths:
-        - "$TARGET_URL/logout.*"
-      authentication:
-        method: "form"
-        parameters:
-          loginUrl: "$TARGET_URL/login/"
-          loginRequestData: "username={%username%}&password={%password%}&csrfmiddlewaretoken={%csrftoken%}"
-        verification:
-          method: "response"
-          loggedInRegex: "\\QCerrar Sesión\\E"
-          loggedOutRegex: "\\QIniciar Sesión\\E"
-      sessionManagement:
-        method: "cookie"
-      users:
-        - name: "$LOGIN_USER"
-          credentials:
-            username: "$LOGIN_USER"
-            password: "$LOGIN_PASS"
-EOF
-
-echo "2️⃣ Ejecutando ZAP Full Scan con autenticación..."
+echo "1️⃣ Ejecutando ZAP Full Scan..."
 docker run --rm \
   -v "$PWD/reports:/zap/wrk:rw" \
   -t ghcr.io/zaproxy/zaproxy:stable \
@@ -65,7 +33,7 @@ docker run --rm \
   || echo "⚠️  Scan completado con warnings"
 
 echo ""
-echo "3️⃣ Verificando archivos..."
+echo "2️⃣ Verificando archivos..."
 ls -lah reports/
 
 if [ -f "reports/zap-report.json" ]; then

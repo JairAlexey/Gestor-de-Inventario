@@ -11,10 +11,10 @@ from zapv2 import ZAPv2
 
 # Configuración desde variables de entorno
 TARGET_URL = os.getenv('DAST_TARGET_URL', 'https://gestor-de-inventario-production.up.railway.app')
-LOGIN_URL = os.getenv('DAST_LOGIN_URL', f'{TARGET_URL}/login/')
+LOGIN_URL = TARGET_URL + '/login/'
 USERNAME = os.getenv('DAST_LOGIN_USER', 'admin')
-PASSWORD = os.getenv('DAST_LOGIN_PASS', 'admin')
-REPORT_DIR = os.getenv('ZAP_REPORT_DIR', '/zap/wrk')
+PASSWORD = os.getenv('DAST_LOGIN_PASS', 'admin123')
+REPORT_DIR = os.getenv('ZAP_REPORT_DIR', 'reports')
 ZAP_API_KEY = os.getenv('ZAP_API_KEY', '')
 ZAP_PORT = int(os.getenv('ZAP_PORT', '8080'))
 
