@@ -93,31 +93,19 @@ jobs:
     steps:
       - checkout
       - run:
-          name: DAST - OWASP ZAP Scan (Railway con Autenticación)
+          name: DAST - OWASP ZAP Scan
           command: |
             set -e
 
-            echo "=========================================="
-            echo "🕷️  OWASP ZAP DAST - Railway Deployment"
-            echo "=========================================="
-            echo "Target: $DAST_TARGET_URL"
-            echo "User: $DAST_LOGIN_USER"
-            echo "=========================================="
-
             # Verificación de conectividad
-            echo "1️⃣ Verificando conectividad con Railway..."
             curl -I "$DAST_TARGET_URL" | head -n 10
 
             # Crear directorio de reportes
             mkdir -p reports
             sudo chmod 777 reports
 
-            echo ""
-            echo "2️⃣ Instalando dependencias para autenticación..."
             pip install python-owasp-zap-v2.4==0.0.21
 
-            echo ""
-            echo "3️⃣ Iniciando ZAP daemon..."
             docker run -d --name zap \
               -u zap \
               -p 8080:8080 \
@@ -128,29 +116,18 @@ jobs:
               -config api.addrs.addr.regex=true \
               -config api.disablekey=true
 
-            echo "⏳ Esperando a que ZAP inicie (45s)..."
             sleep 45
 
             # Verificar que ZAP está corriendo
-            echo "Verificando ZAP API..."
             for i in {1..10}; do
               if curl -s http://localhost:8080 > /dev/null 2>&1; then
-                echo "✅ ZAP API está respondiendo"
                 break
               fi
-              echo "Intento $i/10 - Esperando..."
               sleep 5
             done
-
-            echo ""
-            echo "4️⃣ Ejecutando scan con autenticación..."
             
             # Ejecutar script Python de autenticación
             python security/zap/zap_authenticated_scan.py || {
-              echo "⚠️  Script de autenticación falló, usando fallback..."
-              
-              # Fallback: baseline scan con rutas relativas
-              echo "Ejecutando baseline scan..."
               docker exec zap \
                 zap-baseline.py \
                 -t "$DAST_TARGET_URL" \
@@ -159,62 +136,32 @@ jobs:
                 -w zap-report.md \
                 -d -T 15 || true
               
-              # Copiar reportes del contenedor al host
-              echo "Copiando reportes..."
               docker cp zap:/zap/wrk/zap-report.json reports/ 2>/dev/null || true
               docker cp zap:/zap/wrk/zap-report.html reports/ 2>/dev/null || true
               docker cp zap:/zap/wrk/zap-report.md reports/ 2>/dev/null || true
             }
 
-            echo ""
-            echo "5️⃣ Deteniendo ZAP..."
             docker stop zap || true
             docker rm zap || true
 
-            echo ""
-            echo "6️⃣ Verificando archivos generados..."
-            echo "Archivos en reports/:"
             ls -lah reports/
-
-            echo ""
-            echo "7️⃣ Analizando resultados..."
 
             # Verificar que los reportes existen
             if [ ! -f "reports/zap-report.json" ]; then
-              echo "❌ ERROR: No se generó el reporte JSON"
-              echo "Contenido de reports/:"
               ls -la reports/ || true
-              echo ""
-              echo "Este error puede ocurrir si:"
-              echo "1. ZAP no tuvo suficiente tiempo para generar reportes"
-              echo "2. Problemas de permisos en el volumen Docker"
-              echo "3. ZAP baseline no pudo conectarse al target"
               exit 1
             fi
 
             # Análisis de vulnerabilidades
-            echo "📊 Resumen de Alertas:"
             HIGH=$(grep -o '"risk":"High"' reports/zap-report.json | wc -l || echo "0")
             MEDIUM=$(grep -o '"risk":"Medium"' reports/zap-report.json | wc -l || echo "0")
             LOW=$(grep -o '"risk":"Low"' reports/zap-report.json | wc -l || echo "0")
             INFO=$(grep -o '"risk":"Informational"' reports/zap-report.json | wc -l || echo "0")
 
-            echo "  🔴 High: $HIGH"
-            echo "  🟠 Medium: $MEDIUM"
-            echo "  🟡 Low: $LOW"
-            echo "  🔵 Info: $INFO"
-
             # Fallar el build si hay alertas HIGH
             if [ "$HIGH" -gt 0 ]; then
-              echo ""
-              echo "❌ FALLO: Se encontraron $HIGH alertas de riesgo ALTO"
-              echo "   Revisa los reportes en los artifacts para más detalles."
               exit 1
             fi
-
-            echo ""
-            echo "✅ DAST completado exitosamente"
-            echo "=========================================="
 
       - store_artifacts:
           path: reports
