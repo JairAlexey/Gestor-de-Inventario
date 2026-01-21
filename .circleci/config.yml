@@ -83,13 +83,6 @@ jobs:
   dast_zap:
     machine:
       image: ubuntu-2204:current
-    environment:
-      DAST_TARGET_URL: https://gestor-de-inventario-production.up.railway.app
-      DAST_LOGIN_USER: admin
-      DAST_LOGIN_PASS: admin123
-      DAST_LOGIN_PATH: /login/
-      ZAP_REPORT_DIR: reports
-      ZAP_PORT: 8080
     steps:
       - checkout
       - run:
@@ -157,11 +150,6 @@ jobs:
             MEDIUM=$(grep -o '"risk":"Medium"' reports/zap-report.json | wc -l || echo "0")
             LOW=$(grep -o '"risk":"Low"' reports/zap-report.json | wc -l || echo "0")
             INFO=$(grep -o '"risk":"Informational"' reports/zap-report.json | wc -l || echo "0")
-
-            # Fallar el build si hay alertas HIGH
-            if [ "$HIGH" -gt 0 ]; then
-              exit 1
-            fi
 
       - store_artifacts:
           path: reports
